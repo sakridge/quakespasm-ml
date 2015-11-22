@@ -53,6 +53,11 @@ char	com_token[1024];
 int		com_argc;
 char	**com_argv;
 
+qboolean com_is_recording = false;
+int 	 com_frame_num = 0;
+int 	 com_recording_num = 0;
+char     com_recordingdir[PATH_MAX];
+
 #define CMDLINE_LENGTH	256		/* johnfitz -- mirrored in cmd.c */
 char	com_cmdline[CMDLINE_LENGTH];
 

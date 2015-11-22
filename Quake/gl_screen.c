@@ -24,6 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // screen.c -- master for refresh, status bar, console, chat, notify, etc
 
 #include "quakedef.h"
+#include <sys/stat.h>
+#include <errno.h>
 
 /*
 
@@ -119,6 +121,8 @@ float		scr_disabled_time;
 int	scr_tileclear_updates = 0; //johnfitz
 
 void SCR_ScreenShot_f (void);
+void SCR_StartRecording (void);
+void SCR_EndRecording (void);
 
 /*
 ===============================================================================
@@ -425,6 +429,9 @@ void SCR_Init (void)
 	Cmd_AddCommand ("screenshot",SCR_ScreenShot_f);
 	Cmd_AddCommand ("sizeup",SCR_SizeUp_f);
 	Cmd_AddCommand ("sizedown",SCR_SizeDown_f);
+
+	Cmd_AddCommand ("start_recording",SCR_StartRecording);
+	Cmd_AddCommand ("end_recording",SCR_EndRecording);
 
 	SCR_LoadPics (); //johnfitz
 
@@ -757,6 +764,55 @@ SCREEN SHOTS
 ==============================================================================
 */
 
+void SCR_StartRecording(void) {
+	com_frame_num = 0;
+	qboolean failed_to_find = true;
+	int i;
+	char full_recording_dir[1024];
+	for (i = com_recording_num; i < (com_recording_num + 10000); i++) {
+		q_snprintf(com_recordingdir, sizeof(com_recordingdir), "recording-%d", i);
+		q_snprintf(full_recording_dir, sizeof(full_recording_dir), "%s/%s", com_gamedir, com_recordingdir);
+		int res = mkdir(full_recording_dir, 0775);
+		if (0 != res) {
+		} else {
+			failed_to_find = false;
+			break;
+		}
+	}
+	if (failed_to_find) {
+		Con_Printf("failed to create recording dir");
+		return;
+	}
+	com_recording_num = i;
+	com_is_recording = true;
+}
+
+void SCR_EndRecording(void) {
+	com_is_recording = false;
+}
+
+
+void SCR_ScreenShot_f2(const char * path) {
+	byte	*buffer;
+	//get data
+	if (!(buffer = (byte *) malloc(glwidth*glheight*3)))
+	{
+		Con_Printf ("SCR_ScreenShot_f: Couldn't allocate memory\n");
+		return;
+	}
+
+	glPixelStorei (GL_PACK_ALIGNMENT, 1);/* for widths that aren't a multiple of 4 */
+	glReadPixels (glx, gly, glwidth, glheight, GL_RGB, GL_UNSIGNED_BYTE, buffer);
+
+	// now write the file
+	if (Image_WriteTGA (path, buffer, glwidth, glheight, 24, false))
+		Con_Printf ("Wrote %s\n", path);
+	else
+		Con_Printf ("SCR_ScreenShot_f: Couldn't create a TGA file\n");
+
+	free (buffer);
+}
+
 /*
 ==================
 SCR_ScreenShot_f -- johnfitz -- rewritten to use Image_WriteTGA
@@ -764,12 +820,11 @@ SCR_ScreenShot_f -- johnfitz -- rewritten to use Image_WriteTGA
 */
 void SCR_ScreenShot_f (void)
 {
-	byte	*buffer;
 	char	tganame[16];  //johnfitz -- was [80]
 	char	checkname[MAX_OSPATH];
 	int	i;
 
-// find a file name to save it to
+	// find a file name to save it to
 	for (i=0; i<10000; i++)
 	{
 		q_snprintf (tganame, sizeof(tganame), "spasm%04i.tga", i);	// "fitz%04i.tga"
@@ -783,23 +838,7 @@ void SCR_ScreenShot_f (void)
 		return;
 	}
 
-//get data
-	if (!(buffer = (byte *) malloc(glwidth*glheight*3)))
-	{
-		Con_Printf ("SCR_ScreenShot_f: Couldn't allocate memory\n");
-		return;
-	}
-
-	glPixelStorei (GL_PACK_ALIGNMENT, 1);/* for widths that aren't a multiple of 4 */
-	glReadPixels (glx, gly, glwidth, glheight, GL_RGB, GL_UNSIGNED_BYTE, buffer);
-
-// now write the file
-	if (Image_WriteTGA (tganame, buffer, glwidth, glheight, 24, false))
-		Con_Printf ("Wrote %s\n", tganame);
-	else
-		Con_Printf ("SCR_ScreenShot_f: Couldn't create a TGA file\n");
-
-	free (buffer);
+	SCR_ScreenShot_f2(tganame);
 }
 
 
@@ -1080,5 +1119,13 @@ void SCR_UpdateScreen (void)
 	GLSLGamma_GammaCorrect ();
 
 	GL_EndRendering ();
+
+	// Enable for capturing frames
+	if (com_is_recording) {
+		com_frame_num++;
+		char screenshot_name[1024];
+		sprintf(screenshot_name, "%s/frame-%d.tga", com_recordingdir, com_frame_num);
+		SCR_ScreenShot_f2(screenshot_name);
+	}
 }
 

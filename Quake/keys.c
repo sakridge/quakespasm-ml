@@ -312,13 +312,15 @@ void Key_Console (int key)
 			}
 			con_backscroll = CLAMP(0, con_current-i%con_totallines-2, con_totallines-(glheight>>3)-1);
 		}
-		else	key_linepos = 1;
+		else
+			key_linepos = 1;
 		return;
 
 	case K_END:
 		if (keydown[K_CTRL])
 			con_backscroll = 0;
-		else	key_linepos = strlen(workline);
+		else
+			key_linepos = strlen(workline);
 		return;
 
 	case K_PGUP:
@@ -396,14 +398,16 @@ void Key_Console (int key)
 
 		if (history_line == edit_line)
 			Q_strcpy(workline, current);
-		else	Q_strcpy(workline, key_lines[history_line]);
+		else
+			Q_strcpy(workline, key_lines[history_line]);
 		key_linepos = Q_strlen(workline);
 		return;
 
 	case K_INS:
 		if (keydown[K_SHIFT])		/* Shift-Ins paste */
 			PasteToConsole();
-		else	key_insert ^= 1;
+		else
+			key_insert ^= 1;
 		return;
 
 	case 'v':
@@ -1010,7 +1014,18 @@ void Key_Event (int key, qboolean down)
 		kb = keybindings[key];
 		if (kb && kb[0] == '+')
 		{
-			sprintf (cmd, "-%s %i\n", kb+1, key);
+			char cmd_plus_frame[1024];
+			char actual_path[PATH_MAX];
+			q_snprintf (cmd, sizeof(cmd), "-%s %i\n", kb+1, key);
+			if (com_is_recording) {
+				q_snprintf(actual_path, sizeof(actual_path), "%s/%s/key.log", com_gamedir, com_recordingdir);
+				q_snprintf(cmd_plus_frame, sizeof(cmd_plus_frame), "%d, %s", com_frame_num, cmd);
+				FILE * fh = fopen(actual_path, "a");
+				if (NULL != fh) {
+					fputs(cmd_plus_frame, fh);
+					fclose(fh);
+				}
+			}
 			Cbuf_AddText (cmd);
 		}
 		return;

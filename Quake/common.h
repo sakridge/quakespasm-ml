@@ -157,6 +157,10 @@ extern	qboolean	com_eof;
 
 const char *COM_Parse (const char *data);
 
+extern qboolean com_is_recording;
+extern int com_frame_num;
+extern int com_recording_num;
+extern char com_recordingdir[PATH_MAX];
 
 extern	int		com_argc;
 extern	char	**com_argv;
