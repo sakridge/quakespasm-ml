@@ -927,6 +927,20 @@ void Key_GetGrabbedInput (int *lastkey, int *lastchar)
 		*lastchar = key_inputgrab.lastchar;
 }
 
+void Log_Key(const char * cmd)
+{
+	char cmd_plus_frame[1024];
+	char actual_path[PATH_MAX];
+
+	q_snprintf(actual_path, sizeof(actual_path), "%s/%s/key.log", com_gamedir, com_recordingdir);
+	q_snprintf(cmd_plus_frame, sizeof(cmd_plus_frame), "%d,%s", com_frame_num, cmd);
+	FILE * fh = fopen(actual_path, "a");
+	if (NULL != fh) {
+		fputs(cmd_plus_frame, fh);
+		fclose(fh);
+	}
+}
+
 /*
 ===================
 Key_Event
@@ -1014,17 +1028,9 @@ void Key_Event (int key, qboolean down)
 		kb = keybindings[key];
 		if (kb && kb[0] == '+')
 		{
-			char cmd_plus_frame[1024];
-			char actual_path[PATH_MAX];
 			q_snprintf (cmd, sizeof(cmd), "-%s %i\n", kb+1, key);
 			if (com_is_recording) {
-				q_snprintf(actual_path, sizeof(actual_path), "%s/%s/key.log", com_gamedir, com_recordingdir);
-				q_snprintf(cmd_plus_frame, sizeof(cmd_plus_frame), "%d, %s", com_frame_num, cmd);
-				FILE * fh = fopen(actual_path, "a");
-				if (NULL != fh) {
-					fputs(cmd_plus_frame, fh);
-					fclose(fh);
-				}
+				Log_Key(cmd);
 			}
 			Cbuf_AddText (cmd);
 		}
@@ -1050,6 +1056,9 @@ void Key_Event (int key, qboolean down)
 			{	// button commands add keynum as a parm
 				sprintf (cmd, "%s %i\n", kb, key);
 				Cbuf_AddText (cmd);
+				if (com_is_recording) {
+					Log_Key(cmd);
+				}
 			}
 			else
 			{
