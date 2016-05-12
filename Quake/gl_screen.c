@@ -791,6 +791,16 @@ void SCR_EndRecording(void) {
 	com_is_recording = false;
 }
 
+size_t SCR_GetScreenBufferSize()
+{
+	return glwidth * glheight * 3;
+}
+
+void SCR_GetScreenBuffer(byte * buffer)
+{
+	glPixelStorei (GL_PACK_ALIGNMENT, 1);/* for widths that aren't a multiple of 4 */
+	glReadPixels (glx, gly, glwidth, glheight, GL_RGB, GL_UNSIGNED_BYTE, buffer);
+}
 
 void SCR_ScreenShot_f2(const char * path) {
 	byte	*buffer;
